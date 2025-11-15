@@ -5,6 +5,8 @@ const dotenv = require("dotenv");
 const path = require("path");
 const securityHeaders = require("./middleware/securityHeaders");
 
+console.log("Loading questions route...");
+
 // Load env variables
 dotenv.config();
 

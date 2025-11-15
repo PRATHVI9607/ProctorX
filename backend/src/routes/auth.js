@@ -1,34 +1,77 @@
-// backend/src/routes/auth.js
 const express = require("express");
 const router = express.Router();
-
 const { authMiddleware } = require("../middleware/auth");
 const admin = require("../firebaseAdmin");
 
-// GET logged-in user details
 router.get("/me", authMiddleware, async (req, res) => {
+  console.log("");
+  console.log("🔥🔥🔥 /auth/me triggered");
+
   try {
-    const uid = req.user.uid;
+    console.log("Decoded token received in /auth/me:", req.user);
 
-    // Fetch Firestore profile
-    const userDoc = await admin.firestore().collection("users").doc(uid).get();
+    const uid = req.user?.uid;
+    const email = req.user?.email;
 
-    let userData = {
-      uid,
-      email: req.user.email,
-      role: "student", // default fallback
-    };
+    console.log("UID:", uid);
+    console.log("Email:", email);
 
-    if (userDoc.exists) {
-      const data = userDoc.data();
-      userData.role = data.role || "student";
-      userData.profile = data;
+    if (!uid || !email) {
+      console.log("❌ INVALID TOKEN — UID or Email missing");
+      return res.status(400).json({ error: "Invalid Firebase token" });
     }
 
-    return res.json({ user: userData });
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const snap = await userRef.get();
+
+    if (snap.exists) {
+      console.log("✔ Profile already exists.");
+      return res.json({ user: { uid, email, profile: snap.data() } });
+    }
+
+    console.log("⚠ No profile found. Creating student profile...");
+
+    const newProfile = {
+      email,
+      role: "student",
+      createdAt: Date.now(),
+    };
+
+    await userRef.set(newProfile);
+
+    console.log("✔ NEW PROFILE CREATED:", newProfile);
+
+    res.json({ user: { uid, email, profile: newProfile } });
   } catch (err) {
-    console.error("ERROR /auth/me:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("🔥 ERROR in /auth/me:", err);
+    res.status(500).json({ error: "Failed to save profile" });
+  }
+});
+
+// Update or create student profile
+router.post("/profile", authMiddleware, async (req, res) => {
+  try {
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
+
+    const { year, department, role } = req.body || {};
+    const userRef = admin.firestore().collection("users").doc(uid);
+
+    await userRef.set(
+      {
+        year,
+        department,
+        role: role || "student",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const snap = await userRef.get();
+    return res.json({ profile: { id: snap.id, ...snap.data() } });
+  } catch (err) {
+    console.error("🔥 ERROR in /auth/profile:", err);
+    return res.status(500).json({ error: "Failed to save profile" });
   }
 });
 

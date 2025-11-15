@@ -1,65 +1,66 @@
 // backend/src/routes/questions.js
 const express = require("express");
 const router = express.Router();
-
 const { authMiddleware, requireAdmin } = require("../middleware/auth");
+
+const QuestionModel = require("../models/Question");
+
 const {
   createQuestion,
   getQuestionsByFilter,
+  updateQuestion,
   deleteQuestion,
-  updateQuestion
-} = require("../models/Question");
+} = QuestionModel;
 
-// ➤ CREATE question
+// DEBUG LOG
+console.log("Loaded QuestionModel:", QuestionModel);
+
+// CREATE QUESTION
 router.post("/", authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const result = await createQuestion({
-      ...req.body,
-      createdBy: req.user.uid,
-    });
-    res.json(result);
+    const data = await createQuestion(req.body);
+    res.json(data);
   } catch (err) {
-    console.error("Create question error:", err);
-    res.status(500).json({ message: "Failed to create question" });
+    console.error("❌ Error creating question:", err);
+    res.status(500).json({ error: "Failed to create question" });
   }
 });
 
-// ➤ LIST / FILTER questions
+// GET QUESTIONS
 router.get("/", authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const filter = {};
-
-    if (req.query.section) filter.section = req.query.section;
-    if (req.query.year) filter.year = req.query.year;
-    if (req.query.department) filter.department = req.query.department;
-
+    const filter = {
+      section: req.query.section,
+      year: req.query.year,
+      department: req.query.department,
+    };
     const list = await getQuestionsByFilter(filter);
     res.json(list);
   } catch (err) {
-    console.error("Get questions error:", err);
-    res.status(500).json({ message: "Failed to fetch questions" });
+    console.error("❌ Fetch questions error:", err);
+    res.status(500).json({ error: "Failed to fetch questions" });
   }
 });
 
-// ➤ UPDATE question
+// UPDATE
 router.put("/:id", authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const updated = await updateQuestion(req.params.id, req.body);
-    res.json(updated);
+    await updateQuestion(req.params.id, req.body);
+    res.json({ message: "Updated" });
   } catch (err) {
-    console.error("Update question error:", err);
-    res.status(500).json({ message: "Failed to update question" });
+    console.error("❌ Update question error:", err);
+    res.status(500).json({ error: "Failed to update question" });
   }
 });
 
-// ➤ DELETE question
+// DELETE
 router.delete("/:id", authMiddleware, requireAdmin, async (req, res) => {
   try {
     await deleteQuestion(req.params.id);
-    res.json({ message: "Question deleted" });
+    res.json({ message: "Deleted" });
   } catch (err) {
-    console.error("Delete question error:", err);
-    res.status(500).json({ message: "Failed to delete question" });
+    console.error("❌ Delete question error:", err);
+    res.status(500).json({ error: "Failed to delete question" });
   }
 });
 

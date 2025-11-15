@@ -1,41 +1,40 @@
 // backend/src/models/Question.js
 const admin = require("../firebaseAdmin");
+const db = admin.firestore();
 
-const COLLECTION = "questions";
+const QUESTIONS = db.collection("questions");
 
-// ➤ CREATE QUESTION
+// Create
 async function createQuestion(data) {
-  const ref = await admin.firestore().collection(COLLECTION).add({
+  const ref = await QUESTIONS.add({
     ...data,
-    createdAt: Date.now()
+    createdAt: Date.now(),
   });
-
   return { id: ref.id, ...data };
 }
 
-// ➤ FILTER QUESTIONS
+// Filter
 async function getQuestionsByFilter(filter) {
-  let query = admin.firestore().collection(COLLECTION);
+  let q = QUESTIONS;
 
-  if (filter.section) query = query.where("section", "==", filter.section);
-  if (filter.year) query = query.where("year", "==", filter.year);
-  if (filter.department)
-    query = query.where("department", "==", filter.department);
+  if (filter.section) q = q.where("section", "==", filter.section);
+  if (filter.year) q = q.where("year", "==", Number(filter.year));
+  if (filter.department) q = q.where("department", "==", filter.department);
 
-  const snap = await query.get();
-
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const snap = await q.get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// ➤ UPDATE QUESTION
-async function updateQuestion(id, data) {
-  await admin.firestore().collection(COLLECTION).doc(id).update(data);
-  return { id, ...data };
+// Update
+async function updateQuestion(id, updates) {
+  await QUESTIONS.doc(id).update(updates);
+  return true;
 }
 
-// ➤ DELETE QUESTION
+// Delete
 async function deleteQuestion(id) {
-  await admin.firestore().collection(COLLECTION).doc(id).delete();
+  await QUESTIONS.doc(id).delete();
+  return true;
 }
 
 module.exports = {
