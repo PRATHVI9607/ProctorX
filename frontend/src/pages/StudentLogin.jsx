@@ -11,20 +11,37 @@ export default function StudentLogin() {
   const [year, setYear] = useState("1");
   const [department, setDepartment] = useState("cse");
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
     try {
+      // simple client-side validation for registration
+      if (mode === "register" && password.length < 6) {
+        setError("Password must be at least 6 characters long");
+        return;
+      }
+
       if (mode === "login") {
         await login(email, password);
         } else {
         // register returns the new user object
-        const user = await register(email, password);
+        let user;
+        try {
+          user = await register(email, password);
+        } catch (err) {
+          // Surface Firebase auth errors directly for easier debugging
+          console.error('Firebase register error:', err);
+          setError(`${err?.code || ''} ${err?.message || err}`);
+          return;
+        }
+
         // after registering, save profile (name/year/department) to backend
         try {
           const token = user ? await user.getIdToken() : await getIdToken();
           if (token) {
-            await fetch(`${API_BASE_URL}/auth/profile`, {
+            const resp = await fetch(`${API_BASE_URL}/auth/profile`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -32,14 +49,25 @@ export default function StudentLogin() {
               },
               body: JSON.stringify({ name, year, department }),
             });
+            if (!resp.ok) {
+              const body = await resp.text().catch(() => null);
+              console.error('Failed to save profile, status:', resp.status, 'body:', body);
+              setError(`Profile save failed: ${resp.status} - ${body}`);
+              return;
+            }
+          } else {
+            console.warn('No ID token available after registration');
           }
         } catch (err) {
-          console.warn("Failed to save profile after register:", err);
+          console.warn('Failed to save profile after register:', err);
+          alert(`Profile save error: ${err?.message || err}`);
+          return;
         }
       }
       navigate("/student");
     } catch (err) {
-      alert("Login failed");
+      console.error('Login/Register flow error:', err);
+      setError(`Auth flow failed: ${err?.message || err}`);
     }
   }
 
@@ -97,6 +125,12 @@ export default function StudentLogin() {
             {mode === "login" ? "Login" : "Register"}
           </button>
         </form>
+
+        {error && (
+          <div style={{ marginTop: '0.6rem', color: 'var(--danger, #d9534f)' }}>
+            {error}
+          </div>
+        )}
 
         <div style={{ marginTop: "0.8rem", fontSize: "0.8rem" }}>
           {mode === "login" ? (
