@@ -1,0 +1,31 @@
+# docker/docker-compose.yml
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    container_name: proctor-backend
+    environment:
+      - PORT=5000
+      - CORS_ORIGIN=http://localhost:3000
+      - USERS_COLLECTION=users
+      - QUESTIONS_COLLECTION=questions
+      - EXAMS_COLLECTION=exams
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../backend/serviceAccountKey.json:/app/backend/serviceAccountKey.json:ro
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    container_name: proctor-frontend
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:5000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
