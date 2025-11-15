@@ -55,11 +55,12 @@ router.post("/profile", authMiddleware, async (req, res) => {
     const uid = req.user?.uid;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-    const { year, department, role } = req.body || {};
+    const { name, year, department, role } = req.body || {};
     const userRef = admin.firestore().collection("users").doc(uid);
 
     await userRef.set(
       {
+        name,
         year,
         department,
         role: role || "student",

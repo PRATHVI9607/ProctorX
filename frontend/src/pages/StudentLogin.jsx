@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { login, register } from "../utils/auth";
+import { login, register, getIdToken } from "../utils/auth";
+import { API_BASE_URL } from "../utils/config";
 import { useNavigate } from "react-router-dom";
 
 export default function StudentLogin() {
@@ -9,25 +10,27 @@ export default function StudentLogin() {
   const [password, setPassword] = useState("");
   const [year, setYear] = useState("1");
   const [department, setDepartment] = useState("cse");
+  const [name, setName] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
     try {
       if (mode === "login") {
         await login(email, password);
-      } else {
-        await register(email, password);
-        // after registering, save profile (year/department) to backend
+        } else {
+        // register returns the new user object
+        const user = await register(email, password);
+        // after registering, save profile (name/year/department) to backend
         try {
-          const token = await (await import("../utils/auth")).getIdToken();
+          const token = user ? await user.getIdToken() : await getIdToken();
           if (token) {
-            await fetch(`${process.env.REACT_APP_API_BASE_URL || "/api"}/auth/profile`, {
+            await fetch(`${API_BASE_URL}/auth/profile`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ year, department }),
+              body: JSON.stringify({ name, year, department }),
             });
           }
         } catch (err) {
@@ -64,13 +67,16 @@ export default function StudentLogin() {
             required
           />
 
-          <button className="button button-primary" type="submit" style={{ width: "100%" }}>
-            {mode === "login" ? "Login" : "Register"}
-          </button>
-        </form>
-
           {mode === "register" && (
             <div style={{ marginTop: "0.75rem" }}>
+              <input
+                className="input"
+                placeholder="Full name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
               <label style={{ fontSize: "0.85rem" }}>Year</label>
               <select className="input" value={year} onChange={(e) => setYear(e.target.value)}>
                 <option value="1">1st year</option>
@@ -86,6 +92,11 @@ export default function StudentLogin() {
               </select>
             </div>
           )}
+
+          <button className="button button-primary" type="submit" style={{ width: "100%" }}>
+            {mode === "login" ? "Login" : "Register"}
+          </button>
+        </form>
 
         <div style={{ marginTop: "0.8rem", fontSize: "0.8rem" }}>
           {mode === "login" ? (
