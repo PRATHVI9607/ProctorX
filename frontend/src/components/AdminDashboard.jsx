@@ -8,6 +8,7 @@ import {
   deleteQuestion,
 } from "../services/questionService";
 import { fetchExamSessions } from "../services/monitoringService";
+import { toISTString } from "../utils/date";
 
 export default function AdminDashboard({ onLogout }) {
   const [questions, setQuestions] = useState([]);
@@ -159,7 +160,8 @@ export default function AdminDashboard({ onLogout }) {
   const [view, setView] = useState("createExam");
 
   // helper: live exams and counts
-  const liveExams = exams.filter((e) => e.status === "live");
+  // backend returns an `isLive` boolean on exam objects; fall back to `status` if present
+  const liveExams = exams.filter((e) => (e.isLive === true) || e.status === "live");
 
   return (
     <div className="page-container">
@@ -482,6 +484,11 @@ export default function AdminDashboard({ onLogout }) {
                     <div>
                       <div style={{ fontWeight: 700 }}>{ex.name}</div>
                       <div style={{ fontSize: "0.85rem", opacity: 0.85 }}>{ex.section}</div>
+                      <div style={{ fontSize: "0.8rem", opacity: 0.7, marginTop: 4 }}>
+                        {ex.startTime ? toISTString(ex.startTime) : ''} 
+                        {' '}–{' '}
+                        {ex.endTime ? toISTString(ex.endTime) : ''}
+                      </div>
                     </div>
                     <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                       <button className="button" onClick={() => handleSelectExam(ex.id)}>View Sessions</button>
