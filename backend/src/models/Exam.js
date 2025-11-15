@@ -7,10 +7,16 @@ const db = admin.firestore();
 const EXAMS_COLLECTION = process.env.EXAMS_COLLECTION || "exams";
 
 async function createExam(data) {
-  const ref = await db.collection(EXAMS_COLLECTION).add({
+  // normalize department and section to lowercase to make matching case-insensitive
+  const normalized = {
     ...data,
+    year: data.year !== undefined ? Number(data.year) : data.year,
+    department: data.department ? String(data.department).toLowerCase().trim() : "general",
+    section: data.section ? String(data.section).toLowerCase().trim() : "general",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+
+  const ref = await db.collection(EXAMS_COLLECTION).add(normalized);
   const snap = await ref.get();
   return { id: ref.id, ...snap.data() };
 }
@@ -28,11 +34,21 @@ async function listExamsForAdmin() {
 
 async function listExamsForStudent(year, department) {
   const now = new Date();
-  const snap = await db
-    .collection(EXAMS_COLLECTION)
-    .where("year", "==", year)
-    .where("department", "in", [department, "general"])
-    .get();
+  const y = Number(year);
+  let q = db.collection(EXAMS_COLLECTION).where("year", "==", y);
+
+  // Normalize department for query
+  const deptNormalized = department ? String(department).toLowerCase().trim() : "general";
+
+  // First years should only see 'general' department exams.
+  if (y === 1) {
+    q = q.where("department", "==", "general");
+  } else {
+    // For other years, include exams targeted to their department or general
+    q = q.where("department", "in", [deptNormalized, "general"]);
+  }
+
+  const snap = await q.get();
 
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
@@ -107,11 +123,43 @@ async function addViolation(examId, userId, reason) {
     {
       violations: admin.firestore.FieldValue.arrayUnion({
         reason,
-        time: admin.firestore.FieldValue.serverTimestamp(),
+        // Use a concrete Timestamp here; serverTimestamp() cannot be used inside arrayUnion
+        time: admin.firestore.Timestamp.now(),
       }),
+      // When a violation occurs, pause the session and mark it as awaiting approval
+      status: "paused",
+      awaitingApproval: true,
     },
     { merge: true }
   );
+  const snap = await sessionRef.get();
+  return { id: snap.id, ...snap.data() };
+}
+
+async function approveSession(examId, userId, approverId, approve = true, note = null) {
+  const sessionRef = db
+    .collection(EXAMS_COLLECTION)
+    .doc(examId)
+    .collection("sessions")
+    .doc(userId);
+
+  const approvalRecord = {
+    approverId,
+    approved: !!approve,
+    note: note || "",
+    // Use a concrete Timestamp here; FieldValue.serverTimestamp() is not allowed inside arrays
+    time: admin.firestore.Timestamp.now(),
+  };
+
+  await sessionRef.set(
+    {
+      approvals: admin.firestore.FieldValue.arrayUnion(approvalRecord),
+      awaitingApproval: false,
+      status: approve ? "ongoing" : "blocked",
+    },
+    { merge: true }
+  );
+
   const snap = await sessionRef.get();
   return { id: snap.id, ...snap.data() };
 }
@@ -134,5 +182,6 @@ module.exports = {
   createOrGetSession,
   submitSession,
   addViolation,
+  approveSession,
   listSessions,
 };

@@ -81,15 +81,18 @@ export default function StudentLogin() {
               <select className="input" value={year} onChange={(e) => setYear(e.target.value)}>
                 <option value="1">1st year</option>
                 <option value="2">2nd year</option>
+                <option value="3">3rd year</option>
+                <option value="4">4th year</option>
               </select>
 
               <label style={{ fontSize: "0.85rem" }}>Department</label>
-              <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
-                <option value="cse">CSE</option>
-                <option value="aiml">AIML</option>
-                <option value="mechanical">Mechanical</option>
-                <option value="electronics">Electronics</option>
-              </select>
+              <input
+                className="input"
+                placeholder="Department (e.g. cse or general)"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                required
+              />
             </div>
           )}
 

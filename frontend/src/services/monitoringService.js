@@ -29,3 +29,14 @@ export async function fetchExamSessions(examId) {
   if (!res.ok) throw new Error("Failed to load sessions");
   return res.json();
 }
+
+export async function approveExamSession(examId, userId, approve = true, note = "") {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE_URL}/exams/${examId}/sessions/${userId}/approve`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ approve, note }),
+  });
+  if (!res.ok) throw new Error("Failed to approve/deny session");
+  return res.json();
+}

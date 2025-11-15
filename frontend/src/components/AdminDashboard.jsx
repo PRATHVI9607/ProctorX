@@ -152,6 +152,28 @@ export default function AdminDashboard({ onLogout }) {
     }
   }
 
+  async function handleApproveSession(userId, approve) {
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${API_BASE_URL}/exams/${selectedExamId}/sessions/${userId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ approve }),
+      });
+      if (!res.ok) throw new Error();
+      const updated = await res.json();
+      // refresh sessions
+      const data = await fetchExamSessions(selectedExamId);
+      setSessions(data);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to approve/deny session');
+    }
+  }
+
   async function handleLogout() {
     await logout();
     onLogout();
@@ -202,19 +224,12 @@ export default function AdminDashboard({ onLogout }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Section</label>
-                <select
+                <input
                   className="input"
+                  placeholder="Section (e.g. A or general)"
                   value={newQuestion.section}
-                  onChange={(e) =>
-                    setNewQuestion({ ...newQuestion, section: e.target.value })
-                  }
-                >
-                  <option value="general">General</option>
-                  <option value="cse">CSE</option>
-                  <option value="aiml">AIML</option>
-                  <option value="mechanical">Mechanical</option>
-                  <option value="electronics">Electronics</option>
-                </select>
+                  onChange={(e) => setNewQuestion({ ...newQuestion, section: e.target.value })}
+                />
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Year</label>
@@ -234,22 +249,12 @@ export default function AdminDashboard({ onLogout }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Department</label>
-                <select
+                <input
                   className="input"
+                  placeholder="Department (e.g. cse or general)"
                   value={newQuestion.department}
-                  onChange={(e) =>
-                    setNewQuestion({
-                      ...newQuestion,
-                      department: e.target.value,
-                    })
-                  }
-                >
-                  <option value="general">General</option>
-                  <option value="cse">CSE</option>
-                  <option value="aiml">AIML</option>
-                  <option value="mechanical">Mechanical</option>
-                  <option value="electronics">Electronics</option>
-                </select>
+                  onChange={(e) => setNewQuestion({ ...newQuestion, department: e.target.value })}
+                />
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Type</label>
@@ -326,19 +331,12 @@ export default function AdminDashboard({ onLogout }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Section</label>
-                <select
+                <input
                   className="input"
+                  placeholder="Section (e.g. A or general)"
                   value={examForm.section}
-                  onChange={(e) =>
-                    setExamForm({ ...examForm, section: e.target.value })
-                  }
-                >
-                  <option value="general">General</option>
-                  <option value="cse">CSE</option>
-                  <option value="aiml">AIML</option>
-                  <option value="mechanical">Mechanical</option>
-                  <option value="electronics">Electronics</option>
-                </select>
+                  onChange={(e) => setExamForm({ ...examForm, section: e.target.value })}
+                />
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Year</label>
@@ -358,19 +356,12 @@ export default function AdminDashboard({ onLogout }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Department</label>
-                <select
+                <input
                   className="input"
+                  placeholder="Department (e.g. cse or general)"
                   value={examForm.department}
-                  onChange={(e) =>
-                    setExamForm({ ...examForm, department: e.target.value })
-                  }
-                >
-                  <option value="general">General</option>
-                  <option value="cse">CSE</option>
-                  <option value="aiml">AIML</option>
-                  <option value="mechanical">Mechanical</option>
-                  <option value="electronics">Electronics</option>
-                </select>
+                  onChange={(e) => setExamForm({ ...examForm, department: e.target.value })}
+                />
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem" }}>Duration (minutes)</label>
@@ -502,7 +493,19 @@ export default function AdminDashboard({ onLogout }) {
                         </thead>
                         <tbody>
                           {sessions.map((s) => (
-                            <tr key={s.id}><td>{s.userId}</td><td>{s.status}</td><td>{(s.violations || []).length}</td></tr>
+                            <tr key={s.id}>
+                              <td>{s.userId}</td>
+                              <td>{s.status}{s.awaitingApproval ? ' (awaiting approval)' : ''}</td>
+                              <td>{(s.violations || []).length}</td>
+                              <td>
+                                {s.awaitingApproval && (
+                                  <>
+                                    <button className="button button-primary" onClick={() => handleApproveSession(s.id, true)}>Approve</button>
+                                    <button className="button button-danger" style={{ marginLeft: 8 }} onClick={() => handleApproveSession(s.id, false)}>Deny</button>
+                                  </>
+                                )}
+                              </td>
+                            </tr>
                           ))}
                           {sessions.length === 0 && <tr><td colSpan="3">No sessions yet.</td></tr>}
                         </tbody>

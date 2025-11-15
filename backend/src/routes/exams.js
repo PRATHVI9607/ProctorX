@@ -12,6 +12,7 @@ const {
   submitSession,
   addViolation,
   listSessions,
+  approveSession,
 } = require("../models/Exam");
 const {
   getQuestionsByFilter,
@@ -109,10 +110,13 @@ router.post("/:examId/start", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Exam not active" });
     }
 
+    // If the exam targets a specific department, include both that department and 'general' questions
+    const deptFilter = exam.department === "general" ? undefined : [exam.department, 'general'];
+
     const questions = await getQuestionsByFilter({
       section: exam.section,
       year: exam.year,
-      department: exam.department === "general" ? undefined : exam.department,
+      department: deptFilter,
     });
 
     // Randomly pick
@@ -172,6 +176,21 @@ router.get("/:examId/sessions", authMiddleware, requireAdmin, async (req, res) =
   } catch (err) {
     console.error("List sessions error:", err);
     res.status(500).json({ message: "Failed to fetch sessions" });
+  }
+});
+
+// Admin: approve or deny a paused session so student can continue or be blocked
+router.post("/:examId/sessions/:userId/approve", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const examId = req.params.examId;
+    const userId = req.params.userId;
+    const { approve, note } = req.body;
+
+    const session = await approveSession(examId, userId, req.user.uid, approve === false ? false : true, note);
+    res.json(session);
+  } catch (err) {
+    console.error("Approve session error:", err);
+    res.status(500).json({ message: "Failed to approve/deny session" });
   }
 });
 

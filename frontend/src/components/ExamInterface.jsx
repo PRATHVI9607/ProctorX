@@ -4,6 +4,8 @@ import { API_BASE_URL } from "../utils/config";
 import { getIdToken, logout } from "../utils/auth";
 import { useFullscreenMonitor } from "../hooks/useFullscreenMonitor";
 import { useExamMonitor } from "../hooks/useExamMonitor";
+import { reportViolation } from "../services/monitoringService";
+import { fetchExamSessions } from "../services/monitoringService";
 
 export default function ExamInterface({ examId, onExit }) {
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,15 @@ export default function ExamInterface({ examId, onExit }) {
   const isFullscreen = useFullscreenMonitor({
     enabled: true,
     onExitFullscreen: () => {
-      alert("You left fullscreen. This is reported to the proctor.");
+      // report violation to backend and notify student
+      (async () => {
+        try {
+          await reportViolation(examId, 'fullscreen_exit');
+          alert('You left fullscreen. The proctor has been notified and may pause your session.');
+        } catch (err) {
+          console.error('Failed to report violation', err);
+        }
+      })();
     },
   });
 
@@ -25,6 +35,26 @@ export default function ExamInterface({ examId, onExit }) {
     startExam();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
+
+  // Poll session state when awaiting approval
+  useEffect(() => {
+    let interval;
+    if (session && session.awaitingApproval) {
+      interval = setInterval(async () => {
+        try {
+          const data = await fetchExamSessions(examId);
+          const me = data.find((s) => s.userId === session.userId);
+          if (me) setSession(me);
+          if (me && !me.awaitingApproval) {
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error('Poll sessions failed', err);
+        }
+      }, 4000);
+    }
+    return () => clearInterval(interval);
+  }, [session, examId]);
 
   useEffect(() => {
     if (!exam) return;
@@ -124,6 +154,20 @@ export default function ExamInterface({ examId, onExit }) {
       <div className="page-container">
         <div className="card card-soft" style={{ marginTop: "2rem" }}>
           No exam found.
+        </div>
+      </div>
+    );
+  }
+
+  // If session is paused and awaiting approval, show blocking UI
+  if (session.awaitingApproval) {
+    return (
+      <div className="page-container">
+        <div className="card card-soft" style={{ marginTop: "2rem", textAlign: 'center' }}>
+          <h3>Session paused</h3>
+          <p>Your session has been paused because a proctoring violation was detected. Waiting for admin approval to continue.</p>
+          <p style={{ fontSize: '0.85rem', color: '#666' }}>This page will automatically resume once an admin approves your session.</p>
+          <button className="button button-ghost" onClick={() => { if (window.confirm('Exit exam?')) onExit(); }}>Exit</button>
         </div>
       </div>
     );
