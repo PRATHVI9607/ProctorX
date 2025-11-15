@@ -31,15 +31,16 @@ router.post("/", authMiddleware, requireAdmin, async (req, res) => {
       randomQuestionCount,
     } = req.body;
 
+    // Normalize numeric fields before saving so queries match types
     const exam = await createExam({
       name,
-      year,
+      year: year !== undefined && year !== null ? Number(year) : year,
       department,
       section,
-      durationMinutes,
+      durationMinutes: durationMinutes !== undefined && durationMinutes !== null ? Number(durationMinutes) : durationMinutes,
       startTime: new Date(startTime),
       endTime: new Date(endTime),
-      randomQuestionCount,
+      randomQuestionCount: randomQuestionCount !== undefined && randomQuestionCount !== null ? Number(randomQuestionCount) : randomQuestionCount,
       createdBy: req.user.uid,
     });
 

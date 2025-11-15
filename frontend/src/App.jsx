@@ -12,6 +12,7 @@ import { API_BASE_URL } from "./utils/config";
 
 import AdminLogin from "./pages/AdminLogin";
 import StudentLogin from "./pages/StudentLogin";
+import { useParams } from "react-router-dom";
 
 export default function App() {
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -185,22 +186,10 @@ export default function App() {
           }
         />
 
-        {/* Exam Interface */}
+        {/* Exam Interface - read id from URL so direct navigation works */}
         <Route
           path="/exam/:id"
-          element={
-            examId ? (
-              <ExamInterface
-                examId={examId}
-                onExit={() => {
-                  setExamId(null);
-                  navigate("/student");
-                }}
-              />
-            ) : (
-              <Navigate to="/student-login" replace />
-            )
-          }
+          element={<ExamRoute />}
         />
 
         {/* Unknown paths redirect */}
@@ -208,4 +197,21 @@ export default function App() {
       </Routes>
     </div>
   );
+
+  // Local wrapper so the exam route reads the id from the URL params
+  function ExamRoute() {
+    const { id } = useParams();
+    if (role === "student") {
+      return (
+        <ExamInterface
+          examId={id}
+          onExit={() => {
+            setExamId(null);
+            navigate("/student");
+          }}
+        />
+      );
+    }
+    return <Navigate to="/student-login" replace />;
+  }
 }

@@ -9,6 +9,7 @@ export default function ExamInterface({ examId, onExit }) {
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState(null);
   const [session, setSession] = useState(null);
+  const [startError, setStartError] = useState(null);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
 
@@ -48,22 +49,50 @@ export default function ExamInterface({ examId, onExit }) {
 
   async function startExam() {
     setLoading(true);
+    setStartError(null);
     try {
       const token = await getIdToken();
+      if (!token) {
+        const msg = 'Not authenticated. Please login again.';
+        setStartError(msg);
+        // small delay so user can read message, then exit to student dashboard
+        return;
+      }
       const res = await fetch(`${API_BASE_URL}/exams/${examId}/start`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!res.ok) throw new Error("Failed to start exam");
+      if (!res.ok) {
+        let msg = `Start failed (${res.status})`;
+        try {
+          const body = await res.json();
+          msg += `: ${body.message || body.error || JSON.stringify(body)}`;
+          console.error('Start exam failed response:', body);
+        } catch (e) {
+          const text = await res.text();
+          msg += `: ${text}`;
+          console.error('Start exam failed response text:', text);
+        }
+        // If unauthorized, treat as session expired and exit to student list
+        if (res.status === 401 || res.status === 403) {
+          alert(msg + '\nYou will be returned to the student dashboard.');
+          onExit();
+          return;
+        }
+        // For other errors, surface to the user and allow retry
+        setStartError(msg);
+        return;
+      }
+
       const data = await res.json();
       setExam(data.exam);
       setSession(data.session);
     } catch (err) {
       console.error(err);
-      alert("Could not start exam.");
-      onExit();
+      const msg = err?.message || String(err);
+      setStartError(msg);
     } finally {
       setLoading(false);
     }
@@ -123,7 +152,18 @@ export default function ExamInterface({ examId, onExit }) {
     return (
       <div className="page-container">
         <div className="card card-soft" style={{ marginTop: "2rem" }}>
-          No exam found.
+          {startError ? (
+            <div>
+              <div style={{ marginBottom: "0.6rem" }}>Failed to start exam:</div>
+              <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>{startError}</pre>
+              <div style={{ marginTop: "0.8rem", display: "flex", gap: "0.6rem" }}>
+                <button className="button button-primary" onClick={() => startExam()}>Retry</button>
+                <button className="button button-ghost" onClick={() => onExit()}>Back</button>
+              </div>
+            </div>
+          ) : (
+            <div>No exam found.</div>
+          )}
         </div>
       </div>
     );

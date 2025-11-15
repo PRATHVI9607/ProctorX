@@ -70,9 +70,23 @@ export default function StudentPortal({ onLogout, onStartExam }) {
 
   function fmtTime(ts) {
     if (!ts) return "-";
-    // Firestore Timestamp may have toDate()
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString();
+    // Accepted formats: Firestore Timestamp (has toDate), ISO string, or object { seconds }
+    try {
+      let d;
+      if (ts && typeof ts.toDate === "function") {
+        d = ts.toDate();
+      } else if (typeof ts === "string") {
+        d = new Date(ts);
+      } else if (ts && typeof ts.seconds === "number") {
+        d = new Date(ts.seconds * 1000);
+      } else {
+        d = new Date(ts);
+      }
+      if (isNaN(d.getTime())) return "Invalid date";
+      return d.toLocaleString();
+    } catch (err) {
+      return "Invalid date";
+    }
   }
 
   async function handleLogout() {
@@ -129,7 +143,7 @@ export default function StudentPortal({ onLogout, onStartExam }) {
             )}
 
             {exams
-              .filter((e) => e.status === "live")
+              .filter((e) => e.isLive === true || e.status === "live")
               .map((ex) => (
                 <div key={ex.id} className="card-soft" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>

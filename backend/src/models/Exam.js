@@ -42,7 +42,8 @@ async function listExamsForStudent(year, department) {
       const isLive = now >= start && now <= end;
       const isUpcoming = now < start;
       const status = isLive ? "live" : isUpcoming ? "upcoming" : "ended";
-      return { ...exam, isLive, isUpcoming, status };
+      // return ISO strings for client-friendly serialization
+      return { ...exam, isLive, isUpcoming, status, startTime: start.toISOString(), endTime: end.toISOString() };
     });
 }
 
@@ -50,7 +51,10 @@ async function getExamById(id) {
   const ref = db.collection(EXAMS_COLLECTION).doc(id);
   const snap = await ref.get();
   if (!snap.exists) return null;
-  return { id: snap.id, ...snap.data() };
+  const data = snap.data();
+  const start = data.startTime && data.startTime.toDate ? data.startTime.toDate() : new Date(data.startTime);
+  const end = data.endTime && data.endTime.toDate ? data.endTime.toDate() : new Date(data.endTime);
+  return { id: snap.id, ...data, startTime: start.toISOString(), endTime: end.toISOString() };
 }
 
 async function createOrGetSession(examId, userId, data = {}) {
