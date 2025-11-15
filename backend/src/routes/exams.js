@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { authMiddleware, requireAdmin } = require("../middleware/auth");
+const admin = require("../firebaseAdmin");
 const {
   createExam,
   listExamsForAdmin,
@@ -63,12 +64,24 @@ router.get("/admin", authMiddleware, requireAdmin, async (req, res) => {
 // Student: list available exams
 router.get("/student", authMiddleware, async (req, res) => {
   try {
-    const { year, department } = req.user;
-    if (!year || !department) {
-      return res
-        .status(400)
-        .json({ message: "User profile (year, department) not set" });
+    // Read user profile from Firestore (req.user is the decoded token)
+    const uid = req.user && req.user.uid;
+    if (!uid) return res.status(401).json({ message: "Unauthorized" });
+
+    const USERS_COLLECTION = process.env.USERS_COLLECTION || "users";
+    const snap = await admin.firestore().collection(USERS_COLLECTION).doc(uid).get();
+    if (!snap.exists) {
+      return res.status(400).json({ message: "User profile (year, department) not set" });
     }
+
+    const profile = snap.data();
+    const year = profile.year !== undefined ? Number(profile.year) : profile.year;
+    const department = profile.department;
+
+    if (!year || !department) {
+      return res.status(400).json({ message: "User profile (year, department) not set" });
+    }
+
     const exams = await listExamsForStudent(year, department);
     res.json(exams);
   } catch (err) {

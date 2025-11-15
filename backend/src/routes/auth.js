@@ -34,14 +34,15 @@ router.get("/me", authMiddleware, async (req, res) => {
     const newProfile = {
       email,
       role: "student",
-      createdAt: Date.now(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
     await userRef.set(newProfile);
 
-    console.log("✔ NEW PROFILE CREATED:", newProfile);
+    console.log("✔ NEW PROFILE CREATED (serverTimestamp):", newProfile);
 
-    res.json({ user: { uid, email, profile: newProfile } });
+    const createdSnap = await userRef.get();
+    res.json({ user: { uid, email, profile: { id: createdSnap.id, ...createdSnap.data() } } });
   } catch (err) {
     console.error("🔥 ERROR in /auth/me:", err);
     res.status(500).json({ error: "Failed to save profile" });

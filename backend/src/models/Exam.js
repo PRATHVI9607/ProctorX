@@ -1,5 +1,5 @@
 // backend/src/models/Exam.js
-const admin = require("firebase-admin");
+const admin = require("../firebaseAdmin");
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -16,8 +16,14 @@ async function createExam(data) {
 }
 
 async function listExamsForAdmin() {
+  const now = new Date();
   const snap = await db.collection(EXAMS_COLLECTION).get();
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => {
+    const data = { id: d.id, ...d.data() };
+    const start = data.startTime && data.startTime.toDate ? data.startTime.toDate() : new Date(data.startTime);
+    const end = data.endTime && data.endTime.toDate ? data.endTime.toDate() : new Date(data.endTime);
+    return { ...data, isLive: now >= start && now <= end };
+  });
 }
 
 async function listExamsForStudent(year, department) {
@@ -30,10 +36,13 @@ async function listExamsForStudent(year, department) {
 
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((exam) => {
-      const start = exam.startTime.toDate ? exam.startTime.toDate() : new Date(exam.startTime);
-      const end = exam.endTime.toDate ? exam.endTime.toDate() : new Date(exam.endTime);
-      return now >= start && now <= end;
+    .map((exam) => {
+      const start = exam.startTime && exam.startTime.toDate ? exam.startTime.toDate() : new Date(exam.startTime);
+      const end = exam.endTime && exam.endTime.toDate ? exam.endTime.toDate() : new Date(exam.endTime);
+      const isLive = now >= start && now <= end;
+      const isUpcoming = now < start;
+      const status = isLive ? "live" : isUpcoming ? "upcoming" : "ended";
+      return { ...exam, isLive, isUpcoming, status };
     });
 }
 

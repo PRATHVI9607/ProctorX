@@ -7,6 +7,8 @@ export default function StudentLogin() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [year, setYear] = useState("1");
+  const [department, setDepartment] = useState("cse");
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -15,6 +17,22 @@ export default function StudentLogin() {
         await login(email, password);
       } else {
         await register(email, password);
+        // after registering, save profile (year/department) to backend
+        try {
+          const token = await (await import("../utils/auth")).getIdToken();
+          if (token) {
+            await fetch(`${process.env.REACT_APP_API_BASE_URL || "/api"}/auth/profile`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ year, department }),
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to save profile after register:", err);
+        }
       }
       navigate("/student");
     } catch (err) {
@@ -50,6 +68,24 @@ export default function StudentLogin() {
             {mode === "login" ? "Login" : "Register"}
           </button>
         </form>
+
+          {mode === "register" && (
+            <div style={{ marginTop: "0.75rem" }}>
+              <label style={{ fontSize: "0.85rem" }}>Year</label>
+              <select className="input" value={year} onChange={(e) => setYear(e.target.value)}>
+                <option value="1">1st year</option>
+                <option value="2">2nd year</option>
+              </select>
+
+              <label style={{ fontSize: "0.85rem" }}>Department</label>
+              <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
+                <option value="cse">CSE</option>
+                <option value="aiml">AIML</option>
+                <option value="mechanical">Mechanical</option>
+                <option value="electronics">Electronics</option>
+              </select>
+            </div>
+          )}
 
         <div style={{ marginTop: "0.8rem", fontSize: "0.8rem" }}>
           {mode === "login" ? (

@@ -105,6 +105,40 @@ body {
   padding: 1rem 1.25rem 2.5rem;
 }
 
+/* (Global sidebar removed) */
+
+/* Admin internal sidebar inside AdminDashboard */
+.admin-side {
+  width: 220px;
+}
+
+/* small nav link style used inside AdminDashboard */
+.nav-link {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.45rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  background: rgba(56,189,248,0.06);
+}
+
+/* Exam cards */
+.exam-card {
+  border-radius: 0.9rem;
+  padding: 0.9rem;
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.exam-card h4 { margin: 0; }
+
 /* Navbar */
 
 .navbar {
@@ -425,6 +459,7 @@ textarea.input:focus {
   .grid-2-tight {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* responsive adjustments for removed global sidebar removed */
 }
 
 @media (max-width: 600px) {
