@@ -21,6 +21,18 @@ export default function App() {
 
   const navigate = useNavigate();
 
+  // Navigate to exam when examId is set
+  useEffect(() => {
+    if (examId) {
+      console.log("📍 examId changed to:", examId);
+      console.log("🔄 Current location before navigate:", window.location.pathname);
+      console.log("🔄 Calling navigate(/exam/" + examId + ")");
+      navigate(`/exam/${examId}`, { replace: false });
+      console.log("🔄 Current location after navigate:", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId]);
+
   // 🔥 FIREBASE AUTH LISTENER – fixed version (NO redirect when not logged in)
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -97,7 +109,7 @@ export default function App() {
       </header>
 
       {/* App Routes */}
-      <Routes>
+      <Routes future={{ v7_relativeSplatPath: true }}>
 
         {/* Landing page where user chooses role */}
         <Route
@@ -176,8 +188,8 @@ export default function App() {
                   navigate("/student-login");
                 }}
                 onStartExam={(id) => {
+                  console.log("🚀 Starting exam with ID:", id);
                   setExamId(id);
-                  navigate(`/exam/${id}`);
                 }}
               />
             ) : (
@@ -201,6 +213,7 @@ export default function App() {
   // Local wrapper so the exam route reads the id from the URL params
   function ExamRoute() {
     const { id } = useParams();
+    console.log("🔍 ExamRoute rendered with id:", id, "role:", role);
     if (role === "student") {
       return (
         <ExamInterface
@@ -212,6 +225,7 @@ export default function App() {
         />
       );
     }
+    console.warn("❌ ExamRoute: Not a student, redirecting");
     return <Navigate to="/student-login" replace />;
   }
 }

@@ -55,21 +55,35 @@ router.post("/profile", authMiddleware, async (req, res) => {
     const uid = req.user?.uid;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-    const { name, year, department, role } = req.body || {};
+    let { name, year, department, role } = req.body || {};
+    
+    // Normalize and validate inputs
+    department = department ? String(department).toLowerCase().trim() : undefined;
+    year = year !== undefined ? Number(year) : undefined;
+    if (year !== undefined && Number.isNaN(year)) year = undefined;
+
+    console.log("📝 Updating profile for UID:", uid);
+    console.log("   name:", name);
+    console.log("   year:", year);
+    console.log("   department:", department);
+    console.log("   role:", role);
+
     const userRef = admin.firestore().collection("users").doc(uid);
 
-    await userRef.set(
-      {
-        name,
-        year,
-        department,
-        role: role || "student",
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const updateData = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (name !== undefined && name !== "") updateData.name = name;
+    if (year !== undefined && !Number.isNaN(year)) updateData.year = year;
+    if (department !== undefined && department !== "") updateData.department = department;
+    if (role !== undefined) updateData.role = role;
+
+    await userRef.set(updateData, { merge: true });
 
     const snap = await userRef.get();
+    console.log("✔ Profile updated successfully:", snap.data());
+    
     return res.json({ profile: { id: snap.id, ...snap.data() } });
   } catch (err) {
     console.error("🔥 ERROR in /auth/profile:", err);

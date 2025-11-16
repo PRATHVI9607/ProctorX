@@ -14,7 +14,7 @@ export default function ExamInterface({ examId, onExit }) {
   const [timeLeft, setTimeLeft] = useState(null);
 
   const isFullscreen = useFullscreenMonitor({
-    enabled: true,
+    enabled: !!session,  // Only enable fullscreen after exam loads
     onExitFullscreen: () => {
       alert("You left fullscreen. This is reported to the proctor.");
     },
@@ -51,19 +51,24 @@ export default function ExamInterface({ examId, onExit }) {
     setLoading(true);
     setStartError(null);
     try {
+      console.log("🚀 startExam() called with examId:", examId);
       const token = await getIdToken();
+      console.log("🔑 Token received:", !!token);
       if (!token) {
         const msg = 'Not authenticated. Please login again.';
         setStartError(msg);
         // small delay so user can read message, then exit to student dashboard
         return;
       }
-      const res = await fetch(`${API_BASE_URL}/exams/${examId}/start`, {
+      const url = `${API_BASE_URL}/exams/${examId}/start`;
+      console.log("📡 Calling:", url);
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+      console.log("📊 Response status:", res.status);
       if (!res.ok) {
         let msg = `Start failed (${res.status})`;
         try {
@@ -87,10 +92,11 @@ export default function ExamInterface({ examId, onExit }) {
       }
 
       const data = await res.json();
+      console.log("✅ Exam data received:", data);
       setExam(data.exam);
       setSession(data.session);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Error in startExam:", err);
       const msg = err?.message || String(err);
       setStartError(msg);
     } finally {
@@ -155,9 +161,13 @@ export default function ExamInterface({ examId, onExit }) {
           {startError ? (
             <div>
               <div style={{ marginBottom: "0.6rem" }}>Failed to start exam:</div>
-              <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>{startError}</pre>
+              <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", background: "rgba(0,0,0,0.1)", padding: "0.8rem", borderRadius: "4px", maxHeight: "300px", overflowY: "auto" }}>{startError}</pre>
               <div style={{ marginTop: "0.8rem", display: "flex", gap: "0.6rem" }}>
-                <button className="button button-primary" onClick={() => startExam()}>Retry</button>
+                <button className="button button-primary" onClick={() => {
+                  setStartError(null);
+                  setLoading(true);
+                  startExam();
+                }}>Retry</button>
                 <button className="button button-ghost" onClick={() => onExit()}>Back</button>
               </div>
             </div>

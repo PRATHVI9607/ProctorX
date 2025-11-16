@@ -23,11 +23,11 @@ export default function StudentLogin() {
         return;
       }
 
+      let user;
       if (mode === "login") {
-        await login(email, password);
-        } else {
+        user = await login(email, password);
+      } else {
         // register returns the new user object
-        let user;
         try {
           user = await register(email, password);
         } catch (err) {
@@ -36,34 +36,35 @@ export default function StudentLogin() {
           setError(`${err?.code || ''} ${err?.message || err}`);
           return;
         }
-
-        // after registering, save profile (name/year/department) to backend
-        try {
-          const token = user ? await user.getIdToken() : await getIdToken();
-          if (token) {
-            const resp = await fetch(`${API_BASE_URL}/auth/profile`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ name, year, department }),
-            });
-            if (!resp.ok) {
-              const body = await resp.text().catch(() => null);
-              console.error('Failed to save profile, status:', resp.status, 'body:', body);
-              setError(`Profile save failed: ${resp.status} - ${body}`);
-              return;
-            }
-          } else {
-            console.warn('No ID token available after registration');
-          }
-        } catch (err) {
-          console.warn('Failed to save profile after register:', err);
-          alert(`Profile save error: ${err?.message || err}`);
-          return;
-        }
       }
+
+      // Save profile (name/year/department) to backend for both login and register
+      try {
+        const token = user ? await user.getIdToken() : await getIdToken();
+        if (token) {
+          const resp = await fetch(`${API_BASE_URL}/auth/profile`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ name, year, department }),
+          });
+          if (!resp.ok) {
+            const body = await resp.text().catch(() => null);
+            console.error('Failed to save profile, status:', resp.status, 'body:', body);
+            setError(`Profile save failed: ${resp.status} - ${body}`);
+            return;
+          }
+        } else {
+          console.warn('No ID token available');
+        }
+      } catch (err) {
+        console.warn('Failed to save profile:', err);
+        alert(`Profile save error: ${err?.message || err}`);
+        return;
+      }
+
       navigate("/student");
     } catch (err) {
       console.error('Login/Register flow error:', err);
@@ -95,6 +96,20 @@ export default function StudentLogin() {
             required
           />
 
+          <label style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Year</label>
+          <select className="input" value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="1">1st year</option>
+            <option value="2">2nd year</option>
+          </select>
+
+          <label style={{ fontSize: "0.85rem" }}>Department</label>
+          <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
+            <option value="cse">CSE</option>
+            <option value="aiml">AIML</option>
+            <option value="mechanical">Mechanical</option>
+            <option value="electronics">Electronics</option>
+          </select>
+
           {mode === "register" && (
             <div style={{ marginTop: "0.75rem" }}>
               <input
@@ -105,19 +120,6 @@ export default function StudentLogin() {
                 onChange={(e) => setName(e.target.value)}
                 required
               />
-              <label style={{ fontSize: "0.85rem" }}>Year</label>
-              <select className="input" value={year} onChange={(e) => setYear(e.target.value)}>
-                <option value="1">1st year</option>
-                <option value="2">2nd year</option>
-              </select>
-
-              <label style={{ fontSize: "0.85rem" }}>Department</label>
-              <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
-                <option value="cse">CSE</option>
-                <option value="aiml">AIML</option>
-                <option value="mechanical">Mechanical</option>
-                <option value="electronics">Electronics</option>
-              </select>
             </div>
           )}
 

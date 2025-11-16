@@ -152,7 +152,15 @@ export default function StudentPortal({ onLogout, onStartExam }) {
                   </div>
                   <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                     <div className="timer-pill">{ex.durationMinutes}m</div>
-                    <button className="button button-primary" onClick={() => onStartExam(ex.id)}>Start</button>
+                    <button 
+                      className="button button-primary" 
+                      onClick={() => {
+                        console.log("✅ Start button clicked for exam:", ex.id, ex.name);
+                        onStartExam(ex.id);
+                      }}
+                    >
+                      Start
+                    </button>
                   </div>
                 </div>
               ))}

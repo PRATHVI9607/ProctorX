@@ -106,8 +106,24 @@ router.post("/:examId/start", authMiddleware, async (req, res) => {
     const start = exam.startTime.toDate ? exam.startTime.toDate() : new Date(exam.startTime);
     const end = exam.endTime.toDate ? exam.endTime.toDate() : new Date(exam.endTime);
 
+    console.log("📝 Exam Start Check:");
+    console.log("   Exam ID:", examId);
+    console.log("   Current time:", now.toISOString());
+    console.log("   Exam start:", start.toISOString());
+    console.log("   Exam end:", end.toISOString());
+    console.log("   Is active:", now >= start && now <= end);
+
     if (now < start || now > end) {
-      return res.status(400).json({ message: "Exam not active" });
+      return res.status(400).json({ 
+        message: "Exam not active",
+        debug: {
+          now: now.toISOString(),
+          start: start.toISOString(),
+          end: end.toISOString(),
+          tooEarly: now < start,
+          tooLate: now > end
+        }
+      });
     }
 
     const questions = await getQuestionsByFilter({
